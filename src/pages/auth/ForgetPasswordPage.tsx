@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 
+const API_BASE = import.meta.env.VITE_API_BASE || '';
+
 export function ForgetPasswordPage() {
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
@@ -21,7 +23,7 @@ export function ForgetPasswordPage() {
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch("/api/auth/forgot-password", {
+      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

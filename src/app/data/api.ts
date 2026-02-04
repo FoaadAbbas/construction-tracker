@@ -9,7 +9,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     ...(init?.headers as Record<string, string> || {}),
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -21,7 +21,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const txt = await res.text();
   const json = txt ? JSON.parse(txt) : null;
-  
+
   // Handle authentication errors
   if (res.status === 401 || res.status === 403) {
     // Don't redirect if we're already on auth pages
@@ -29,14 +29,14 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     if (currentPath.startsWith('/login') || currentPath.startsWith('/register') || currentPath.startsWith('/forgot-password')) {
       throw new Error(json?.error || "Authentication required");
     }
-    
+
     // Token is invalid or expired, clear auth data
     localStorage.removeItem("constrack_token");
     localStorage.removeItem("constrack_user");
     window.location.href = "/login";
     throw new Error("Authentication required");
   }
-  
+
   if (!res.ok) {
     const msg = json?.error || res.statusText || "Request failed";
     throw new Error(msg);
@@ -118,10 +118,10 @@ export async function uploadScan(projectId: string, file: File, capturedAtISO: s
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`/api/scans/upload`, { 
-    method: "POST", 
+  const res = await fetch(`${API_BASE}/api/scans/upload`, {
+    method: "POST",
     body: fd,
-    headers 
+    headers
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json?.error || res.statusText);

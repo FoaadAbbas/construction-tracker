@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+const API_BASE = import.meta.env.VITE_API_BASE || '';
+
 type AuthUser = {
   id: string;
   email: string;
@@ -38,14 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem(LS_KEY_TOKEN);
     const userStr = localStorage.getItem(LS_KEY_USER);
     if (!token || !userStr) return;
-    
+
     // Check if token is expired
     if (isTokenExpired(token)) {
       localStorage.removeItem(LS_KEY_TOKEN);
       localStorage.removeItem(LS_KEY_USER);
       return;
     }
-    
+
     try {
       const u = JSON.parse(userStr);
       setUser(u);
@@ -60,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isAuthenticated: !!user,
       login: async (emailOrUsername: string, password: string) => {
-        const res = await fetch("/api/auth/login", {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: emailOrUsername, password }),
@@ -75,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
       },
       register: async (name: string, email: string, username: string, password: string) => {
-        const res = await fetch("/api/auth/register", {
+        const res = await fetch(`${API_BASE}/api/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, email, username, password }),
