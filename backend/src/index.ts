@@ -13,8 +13,9 @@ import nodemailer from "nodemailer";
 // Create transporter using Gmail service for better compatibility
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // true for 465, false for other ports
+  port: 587,
+  secure: false, // true for 465, false for other ports
+  requireTLS: true,
   logger: true,
   debug: true,
   connectionTimeout: 10000,
