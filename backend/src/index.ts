@@ -99,19 +99,9 @@ function forecastDateISO(overallProgressPct: number) {
 }
 
 async function ensureDemoProject() {
-  const existing = await ProjectModel.findOne().lean();
-  if (existing) return String(existing._id);
-  const p = await ProjectModel.create({ name: "Rothschild Towers", createdAtISO: new Date().toISOString() });
-  const projectId = String(p._id);
-  // root site
-  await ZoneModel.create({
-    projectId,
-    name: "Rothschild Towers",
-    type: "site",
-    completionPct: 0,
-    createdAtISO: new Date().toISOString(),
-  });
-  return projectId;
+  // In production with user auth, we no longer create a demo project
+  // Each user creates their own projects
+  return "";
 }
 
 async function runPythonVolumeDiff(t1Path: string, t2Path: string, voxelSize: number) {
