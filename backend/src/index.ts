@@ -10,17 +10,26 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 
+// Create transporter using Gmail service for better compatibility
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: false, // true for 465, false for other ports
+  service: "gmail",
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
 });
 
+// Verify transporter connection on startup
+transporter.verify(function (error, success) {
+  if (error) {
+    console.error("SMTP connection error:", error.message);
+  } else {
+    console.log("SMTP server is ready to send emails");
+  }
+});
+
 console.log("Transporter created with user:", process.env.SMTP_USER);
+
 
 import { connectDb } from "./db.js";
 import { ProjectModel, ZoneModel, ScanModel, RunModel, ReportModel, UserModel, type ZoneDoc } from "./models.js";

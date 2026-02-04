@@ -4,6 +4,8 @@ import * as THREE from "three";
 // @ts-ignore
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
+const API_BASE = import.meta.env.VITE_API_BASE || '';
+
 export function ModelPage() {
   const { data } = useAppData();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -11,7 +13,7 @@ export function ModelPage() {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,19 +50,43 @@ export function ModelPage() {
     async function loadPointCloud(scanId: string) {
       setLoading(true);
       setError(null);
-      
+
       try {
         const token = localStorage.getItem("constrack_token");
         const headers: Record<string, string> = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const response = await fetch(`/api/scans/${scanId}/points`, { headers });
-        if (!response.ok) throw new Error(`Failed: ${response.statusText}`);
-        
-        const data = await response.json();
-        const points = data.points; 
+        const response = await fetch(`${API_BASE}/api/scans/${scanId}/points`, { headers });
+
+        // Get response text first to handle both JSON and non-JSON responses
+        const text = await response.text();
+
+        if (!response.ok) {
+          // Try to parse error message from JSON, fall back to status text
+          try {
+            const errorData = JSON.parse(text);
+            throw new Error(errorData.error || `Failed: ${response.statusText}`);
+          } catch {
+            throw new Error(`Failed: ${response.statusText}`);
+          }
+        }
+
+        // Parse JSON
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error("Invalid response from server - not valid JSON");
+        }
+
+        // Check for error in response
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        const points = data.points;
         const colors = data.colors;
-        
+
         if (!points || points.length === 0) throw new Error("No points in file");
 
         // --- PREPARE GEOMETRY ---
@@ -73,9 +99,9 @@ export function ModelPage() {
         // Calculate average center (Centroid) to normalize positions
         let sumX = 0, sumY = 0, sumZ = 0;
         for (let i = 0; i < points.length; i++) {
-            sumX += points[i][0];
-            sumY += points[i][1];
-            sumZ += points[i][2];
+          sumX += points[i][0];
+          sumY += points[i][1];
+          sumZ += points[i][2];
         }
         const centerX = sumX / points.length;
         const centerY = sumY / points.length;
@@ -112,15 +138,15 @@ export function ModelPage() {
         geometry.scale(scaleFactor, scaleFactor, scaleFactor);
 
         // --- MATERIAL (Connected Look) ---
-        const material = new THREE.PointsMaterial({ 
+        const material = new THREE.PointsMaterial({
           color: colorArray ? undefined : 0x00ffff,
           vertexColors: !!colorArray,
           size: 0.15,          // <--- Size: Big enough to overlap
-          sizeAttenuation: true, 
+          sizeAttenuation: true,
           transparent: false,  // <--- Solid: Prevents "ghost" look
           opacity: 1.0
         });
-        
+
         const pointCloud = new THREE.Points(geometry, material);
         pointCloud.name = "targetModel";
 
@@ -155,7 +181,7 @@ export function ModelPage() {
       renderer.render(scene, camera);
     };
     animate();
-    
+
     loadPointCloud(selectedScan.id);
 
     return () => {
@@ -181,12 +207,12 @@ export function ModelPage() {
 
     // Position camera looking down at an angle
     cameraRef.current.position.set(
-        center.x, 
-        center.y + distance, // High up
-        center.z + distance  // Back a bit
+      center.x,
+      center.y + distance, // High up
+      center.z + distance  // Back a bit
     );
     cameraRef.current.lookAt(center);
-    
+
     // Set orbit pivot to the center of the floor
     controlsRef.current.target.copy(center);
     controlsRef.current.update();
@@ -211,12 +237,12 @@ export function ModelPage() {
           <div className="text-2xl font-semibold">3D Model</div>
           <div className="text-sm muted">Viewing: {selectedScan.name}</div>
         </div>
-        
+
         <div className="flex gap-2">
-           <button 
-             onClick={handleResetView} 
-             className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-medium"
-           >
+          <button
+            onClick={handleResetView}
+            className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-medium"
+          >
             Reset View
           </button>
           <button onClick={() => handleRotate('x')} className="px-3 py-1.5 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm">
@@ -234,19 +260,19 @@ export function ModelPage() {
       <div className="border border-app rounded-lg overflow-hidden bg-gray-900 relative">
         <canvas ref={canvasRef} className="w-full h-[500px] block" />
         {loading && (
-             <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">
-                Loading...
-            </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">
+            Loading...
+          </div>
         )}
         {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-red-400 p-4 text-center">
-                {error}
-            </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-red-400 p-4 text-center">
+            {error}
+          </div>
         )}
       </div>
-      
+
       <div className="text-xs muted flex justify-between px-1">
-         <span>Left Click: Rotate | Right Click: Pan | Scroll: Zoom</span>
+        <span>Left Click: Rotate | Right Click: Pan | Scroll: Zoom</span>
       </div>
     </div>
   );
