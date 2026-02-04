@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b0f19;
+  --surface: #0f1117;
+  --surface-2: #161925;
+  --border: #1f2433;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #a3e635;
+  --accent-strong: #bef264;
+  --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.theme-dark {
+  --bg: #0b0f19;
+  --surface: #0f1117;
+  --surface-2: #161925;
+  --border: #1f2433;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #a3e635;
+  --accent-strong: #bef264;
+  --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.theme-light {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #e2e8f0;
+  --border: #cbd5e1;
+  --text: #0f172a;
+  --muted: #475569;
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --card-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
+}
+
+.bg-app {
+  background-color: var(--bg);
+}
+
+.text-app {
+  color: var(--text);
+}
+
+.card-surface {
+  background-color: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: var(--card-shadow);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.surface-2 {
+  background-color: var(--surface-2);
+}
+
+.border-app {
+  border-color: var(--border);
+}
+
+.accent {
+  background-color: var(--accent);
+  color: #0b1224;
+}
+
+.accent:hover {
+  background-color: var(--accent-strong);
+}
+
+.btn-secondary {
+  background-color: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
