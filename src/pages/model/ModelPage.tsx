@@ -65,9 +65,14 @@ export function ModelPage() {
           // Try to parse error message from JSON, fall back to status text
           try {
             const errorData = JSON.parse(text);
-            throw new Error(errorData.error || `Failed: ${response.statusText}`);
-          } catch {
-            throw new Error(`Failed: ${response.statusText}`);
+            throw new Error(errorData.error || `Request failed: ${response.statusText}`);
+          } catch (parseErr) {
+            // If it's already an Error we threw, re-throw it
+            if (parseErr instanceof Error && parseErr.message !== "Unexpected token") {
+              throw parseErr;
+            }
+            // Otherwise JSON parsing failed, use status text
+            throw new Error(`Request failed: ${response.statusText}`);
           }
         }
 

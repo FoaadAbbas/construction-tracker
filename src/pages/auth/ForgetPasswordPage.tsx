@@ -10,6 +10,7 @@ export function ForgetPasswordPage() {
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
 
   const emailError = touched && !email.includes("@") ? "Enter a valid email." : "";
 
@@ -22,19 +23,21 @@ export function ForgetPasswordPage() {
 
     setLoading(true);
     setMessage("");
+    setIsError(false);
     try {
       const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to send reset email");
+        throw new Error(data.error || "Failed to send reset email");
       }
-      setMessage("If an account with that email exists, a reset link has been sent.");
+      setMessage(data.message || "If an account with that email exists, a reset link has been sent.");
     } catch (err: any) {
-      setMessage(err.message);
+      setIsError(true);
+      setMessage(err.message || "Failed to send reset email. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -44,7 +47,7 @@ export function ForgetPasswordPage() {
     <form onSubmit={onSubmit} className="space-y-4">
       <h2 className="text-xl font-semibold">Forgot Password</h2>
       <p className="text-sm text-gray-600">Enter your email to receive a password reset link.</p>
-      {message && <div className="text-sm">{message}</div>}
+      {message && <div className={`text-sm ${isError ? 'text-red-500' : 'text-green-500'}`}>{message}</div>}
       <Input
         label="Email"
         placeholder="name@company.com"
