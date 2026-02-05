@@ -7,6 +7,8 @@ services:
     buildCommand: npm install && pip3 install -r python/requirements.txt && npm run build
     startCommand: npm start
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
