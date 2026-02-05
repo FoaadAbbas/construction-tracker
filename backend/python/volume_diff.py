@@ -145,22 +145,68 @@ def extract_points(path: str, max_points: int = 100000):
             
             try:
                 import laspy
-                las = laspy.read(path)
-                if len(las.x) == 0:
-                    raise RuntimeError("LAS file contains no points")
-                points = np.vstack((las.x, las.y, las.z)).T.astype("float64")
                 
-                # Extract colors if available
-                colors = None
-                if hasattr(las, 'red') and hasattr(las, 'green') and hasattr(las, 'blue'):
-                    try:
-                        # Normalize colors from 0-65535 to 0-1
-                        red = np.array(las.red, dtype=np.float32) / 65535.0
-                        green = np.array(las.green, dtype=np.float32) / 65535.0
-                        blue = np.array(las.blue, dtype=np.float32) / 65535.0
-                        colors = np.vstack((red, green, blue)).T
-                    except:
-                        colors = None
+                points_list = []
+                colors_list = []
+                
+                # Use chunked reading to handle large files without OOM
+                with laspy.open(path) as fh:
+                    total_points = fh.header.point_count
+                    
+                    # If small enough, read all (faster)
+                    if total_points <= max_points:
+                        las = fh.read()
+                        pts = np.vstack((las.x, las.y, las.z)).T.astype("float64")
+                        points_list.append(pts)
+                        
+                        if hasattr(las, 'red') and hasattr(las, 'green') and hasattr(las, 'blue'):
+                            try:
+                                r = np.array(las.red, dtype=np.float32) / 65535.0
+                                g = np.array(las.green, dtype=np.float32) / 65535.0
+                                b = np.array(las.blue, dtype=np.float32) / 65535.0
+                                colors_list.append(np.vstack((r, g, b)).T)
+                            except:
+                                pass
+                    else:
+                        # Large file: Read in chunks and sample
+                        # Probability to keep a point
+                        prob = max_points / total_points
+                        # Chunk size of 1M points
+                        chunk_size = 1_000_000
+                        
+                        for chunk in fh.chunk_iterator(chunk_size):
+                            # Simple random mask selection is fast
+                            mask = np.random.rand(len(chunk)) < prob
+                            
+                            if np.sum(mask) == 0:
+                                continue
+
+                            sub_x = chunk.x[mask]
+                            sub_y = chunk.y[mask]
+                            sub_z = chunk.z[mask]
+                            points_list.append(np.vstack((sub_x, sub_y, sub_z)).T.astype("float64"))
+                            
+                            if hasattr(chunk, 'red') and hasattr(chunk, 'green') and hasattr(chunk, 'blue'):
+                                try:
+                                    r = np.array(chunk.red[mask], dtype=np.float32) / 65535.0
+                                    g = np.array(chunk.green[mask], dtype=np.float32) / 65535.0
+                                    b = np.array(chunk.blue[mask], dtype=np.float32) / 65535.0
+                                    colors_list.append(np.vstack((r, g, b)).T)
+                                except:
+                                    pass
+                                    
+                if not points_list:
+                    raise RuntimeError("LAS file contains no points (or sampling failed)")
+                    
+                points = np.vstack(points_list)
+                colors = np.vstack(colors_list) if colors_list else None
+                
+                # If we still ended up with too many (due to probability), trim
+                if len(points) > max_points:
+                    idx = np.random.choice(len(points), max_points, replace=False)
+                    points = points[idx]
+                    if colors is not None:
+                        colors = colors[idx]
                         
             except Exception as e:
                 error_msg = str(e)
