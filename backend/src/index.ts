@@ -12,15 +12,9 @@ import nodemailer from "nodemailer";
 
 // Create transporter using Gmail service for better compatibility
 const transporter = nodemailer.createTransport({
-  service: "gmail",
   host: "smtp.gmail.com",
   port: 587,
   secure: false, // upgrade later with STARTTLS
-  tls: {
-    rejectUnauthorized: false
-  },
-  logger: true,
-  debug: true,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
