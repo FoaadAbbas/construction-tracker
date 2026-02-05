@@ -13,6 +13,9 @@ import nodemailer from "nodemailer";
 // Create transporter using Gmail service for better compatibility
 const transporter = nodemailer.createTransport({
   service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   logger: true,
   debug: true,
   auth: {
