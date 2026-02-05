@@ -916,6 +916,9 @@ You help users understand construction progress, analyze scan data, provide insi
     console.log(`Demo projectId: ${demoProjectId}`);
   });
 
+  server.timeout = 300000; // 5 minutes
+  server.keepAliveTimeout = 300000;
+
   const wss = new WebSocketServer({ server, path: "/ws" });
   registerWs(wss);
 }
