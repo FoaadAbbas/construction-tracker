@@ -137,33 +137,29 @@ export function ModelPage() {
         const scaleFactor = 10 / maxDim;
         geometry.scale(scaleFactor, scaleFactor, scaleFactor);
 
-        // --- Create circular point texture for smooth, realistic appearance ---
+        // --- Create solid circular disc texture ---
         const canvas = document.createElement('canvas');
-        canvas.width = 64;
-        canvas.height = 64;
+        canvas.width = 32;
+        canvas.height = 32;
         const ctx = canvas.getContext('2d')!;
 
-        // Draw a soft circular gradient
-        const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        gradient.addColorStop(0.4, 'rgba(255, 255, 255, 1)');
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, 64, 64);
+        // Draw a solid white circle
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(16, 16, 15, 0, Math.PI * 2);
+        ctx.fill();
 
         const pointTexture = new THREE.CanvasTexture(canvas);
 
-        // --- MATERIAL (Realistic smooth points for LAS/LAZ scans) ---
+        // --- MATERIAL (Solid circular points for LAS/LAZ scans) ---
         const material = new THREE.PointsMaterial({
           color: colorArray ? undefined : 0x00ffff,
           vertexColors: !!colorArray,
-          size: 0.28,            // Balanced size for smooth overlap
+          size: 0.22,
           sizeAttenuation: true,
           transparent: true,
-          opacity: 1.0,
           map: pointTexture,
-          alphaTest: 0.1,        // Removes hard edges
-          depthWrite: false      // Proper blending for overlapping points
+          alphaTest: 0.5
         });
 
         const pointCloud = new THREE.Points(geometry, material);
