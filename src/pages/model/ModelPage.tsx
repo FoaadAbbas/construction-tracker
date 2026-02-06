@@ -137,29 +137,13 @@ export function ModelPage() {
         const scaleFactor = 10 / maxDim;
         geometry.scale(scaleFactor, scaleFactor, scaleFactor);
 
-        // --- Create solid circular disc texture ---
-        const canvas = document.createElement('canvas');
-        canvas.width = 32;
-        canvas.height = 32;
-        const ctx = canvas.getContext('2d')!;
-
-        // Draw a solid white circle
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.arc(16, 16, 15, 0, Math.PI * 2);
-        ctx.fill();
-
-        const pointTexture = new THREE.CanvasTexture(canvas);
-
-        // --- MATERIAL (Solid circular points for LAS/LAZ scans) ---
+        // --- MATERIAL (Small dense points for realistic surface) ---
+        // Using very small points - they blend into a solid surface
         const material = new THREE.PointsMaterial({
           color: colorArray ? undefined : 0x00ffff,
           vertexColors: !!colorArray,
-          size: 0.22,
-          sizeAttenuation: true,
-          transparent: true,
-          map: pointTexture,
-          alphaTest: 0.5
+          size: 0.08,            // Small points that blend together
+          sizeAttenuation: true
         });
 
         const pointCloud = new THREE.Points(geometry, material);
