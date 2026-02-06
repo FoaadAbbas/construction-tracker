@@ -137,11 +137,11 @@ export function ModelPage() {
         const scaleFactor = 10 / maxDim;
         geometry.scale(scaleFactor, scaleFactor, scaleFactor);
 
-        // --- MATERIAL (Dense points for realistic surface with 500k points) ---
+        // --- MATERIAL (Dense points for realistic surface with 200k points) ---
         const material = new THREE.PointsMaterial({
           color: colorArray ? undefined : 0x00ffff,
           vertexColors: !!colorArray,
-          size: 0.04,            // Small points with 500k point count
+          size: 0.06,            // Balanced for 200k points
           sizeAttenuation: true
         });
 

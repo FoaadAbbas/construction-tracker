@@ -248,7 +248,7 @@ def main():
     ap.add_argument("--extract", required=False)  # New mode for single file extraction
     ap.add_argument("--voxel", type=float, default=0.05)  # 5cm default
     ap.add_argument("--max_points", type=int, default=2_000_000)
-    ap.add_argument("--max_extract_points", type=int, default=500_000)  # For extraction mode
+    ap.add_argument("--max_extract_points", type=int, default=200_000)  # For extraction mode
     args = ap.parse_args()
 
     try:
