@@ -137,13 +137,13 @@ export function ModelPage() {
         const scaleFactor = 10 / maxDim;
         geometry.scale(scaleFactor, scaleFactor, scaleFactor);
 
-        // --- MATERIAL (Connected Look) ---
+        // --- MATERIAL (Solid Surface Look for LAS/LAZ scans) ---
         const material = new THREE.PointsMaterial({
           color: colorArray ? undefined : 0x00ffff,
           vertexColors: !!colorArray,
-          size: 0.15,          // <--- Size: Big enough to overlap
+          size: 0.35,            // Large points that overlap for solid surfaces
           sizeAttenuation: true,
-          transparent: false,  // <--- Solid: Prevents "ghost" look
+          transparent: false,
           opacity: 1.0
         });
 
