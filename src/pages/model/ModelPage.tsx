@@ -65,14 +65,9 @@ export function ModelPage() {
           // Try to parse error message from JSON, fall back to status text
           try {
             const errorData = JSON.parse(text);
-            throw new Error(errorData.error || `Request failed: ${response.statusText}`);
-          } catch (parseErr) {
-            // If it's already an Error we threw, re-throw it
-            if (parseErr instanceof Error && parseErr.message !== "Unexpected token") {
-              throw parseErr;
-            }
-            // Otherwise JSON parsing failed, use status text
-            throw new Error(`Request failed: ${response.statusText}`);
+            throw new Error(errorData.error || `Failed: ${response.statusText}`);
+          } catch {
+            throw new Error(`Failed: ${response.statusText}`);
           }
         }
 
@@ -130,41 +125,25 @@ export function ModelPage() {
           geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
         }
 
-        // 2. Scale it to fit the screen - optimized for construction scans
+        // 2. Scale it to fit the screen
+        // We scale the whole "Floor" to be roughly 10 units wide
         geometry.computeBoundingBox();
         const box = geometry.boundingBox!;
-        const sizeX = box.max.x - box.min.x;
-        const sizeY = box.max.y - box.min.y;
-        const sizeZ = box.max.z - box.min.z;
-        const maxDim = Math.max(sizeX, sizeY, sizeZ);
-
-        // Normalize to 15 units - good balance for construction site overview
-        const scaleFactor = 15 / maxDim;
+        const maxDim = Math.max(
+          box.max.x - box.min.x,
+          box.max.y - box.min.y,
+          box.max.z - box.min.z
+        );
+        const scaleFactor = 10 / maxDim;
         geometry.scale(scaleFactor, scaleFactor, scaleFactor);
 
-        // --- ADAPTIVE POINT SIZE for Construction Scans ---
-        // Calculate point size based on point density and model dimensions
-        // For dense scans (>50k points): smaller points, for sparse: larger points
-        const pointCount = points.length;
-        const scaledMaxDim = 15; // After scaling
-        const avgSpacing = scaledMaxDim / Math.pow(pointCount, 1 / 3); // Estimated spacing
-
-        // Point size: starts at 0.08, scales with density (range: 0.04 - 0.25)
-        let pointSize = Math.max(0.04, Math.min(0.25, avgSpacing * 0.8));
-
-        // For very dense scans (construction reality capture), use smaller points
-        if (pointCount > 80000) pointSize = 0.06;
-        else if (pointCount > 50000) pointSize = 0.08;
-        else if (pointCount > 20000) pointSize = 0.12;
-        else pointSize = 0.15;
-
-        // --- MATERIAL (Optimized for Construction Scans) ---
+        // --- MATERIAL (Connected Look) ---
         const material = new THREE.PointsMaterial({
           color: colorArray ? undefined : 0x00ffff,
           vertexColors: !!colorArray,
-          size: pointSize,
+          size: 0.15,          // <--- Size: Big enough to overlap
           sizeAttenuation: true,
-          transparent: false,
+          transparent: false,  // <--- Solid: Prevents "ghost" look
           opacity: 1.0
         });
 
@@ -224,7 +203,7 @@ export function ModelPage() {
 
     // Zoom out enough to see the widest part of the floor
     const maxDim = Math.max(size.x, size.y, size.z);
-    const distance = maxDim * 1.6; // Good overview for construction sites
+    const distance = maxDim * 1.2; // 1.2x buffer space
 
     // Position camera looking down at an angle
     cameraRef.current.position.set(
