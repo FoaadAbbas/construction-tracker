@@ -139,14 +139,14 @@ export function ModelPage() {
           box.max.y - box.min.y,
           box.max.z - box.min.z
         );
-        const scaleFactor = 10 / maxDim;  // Normalized scale
+        const scaleFactor = 20 / maxDim;  // Larger scale for better detail
         geometry.scale(scaleFactor, scaleFactor, scaleFactor);
 
         // --- MATERIAL (Connected Look) ---
         const material = new THREE.PointsMaterial({
           color: colorArray ? undefined : 0x00ffff,
           vertexColors: !!colorArray,
-          size: 0.18,          // <--- Larger points for dense, connected appearance
+          size: 0.05,          // <--- Smaller, denser points for realistic look
           sizeAttenuation: true,
           transparent: false,  // <--- Solid: Prevents "ghost" look
           opacity: 1.0
@@ -208,7 +208,7 @@ export function ModelPage() {
 
     // Zoom out enough to see the widest part of the floor
     const maxDim = Math.max(size.x, size.y, size.z);
-    const distance = maxDim * 1.5; // Balanced view
+    const distance = maxDim * 1.8; // Wider view for larger model
 
     // Position camera looking down at an angle
     cameraRef.current.position.set(
