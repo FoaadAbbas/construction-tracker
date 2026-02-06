@@ -127,7 +127,7 @@ export function ModelPage() {
           positions[i * 3 + 1] = points[i][1] - centerY;
           positions[i * 3 + 2] = points[i][2] - centerZ;
 
-          if (colorArray && colors[i]) {
+          if (colorArray && colors && colors[i]) {
             colorArray[i * 3] = colors[i][0];
             colorArray[i * 3 + 1] = colors[i][1];
             colorArray[i * 3 + 2] = colors[i][2];
