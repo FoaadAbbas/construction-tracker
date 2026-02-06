@@ -19,6 +19,12 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  connectionTimeout: 30000, // 30 seconds - fail fast instead of hanging
+  greetingTimeout: 20000,   // 20 seconds
+  socketTimeout: 30000,     // 30 seconds
+  tls: {
+    rejectUnauthorized: false // Helps with Windows certificate issues
+  }
 });
 
 // Verify transporter connection on startup
@@ -290,6 +296,55 @@ async function main() {
     } catch (e: any) {
       console.error("Test email error:", e);
       res.status(500).json({ error: String(e?.message || e) });
+    }
+  });
+
+  app.get("/api/debug-smtp", async (req, res) => {
+    try {
+      const userSet = !!process.env.SMTP_USER;
+      const passSet = !!process.env.SMTP_PASS;
+
+      console.log("Debugging SMTP...");
+      console.log("Host:", "smtp.gmail.com");
+      console.log("Port:", 587);
+      console.log("User Set:", userSet);
+      console.log("Pass Set:", passSet);
+
+      await new Promise<void>((resolve, reject) => {
+        transporter.verify(function (error, success) {
+          if (error) {
+            console.error("Verification failed:", error);
+            reject(error);
+          } else {
+            console.log("Verification success");
+            resolve();
+          }
+        });
+      });
+
+      res.json({
+        ok: true,
+        config: {
+          host: "smtp.gmail.com",
+          port: 587,
+          userSet,
+          passSet
+        },
+        message: "SMTP Connection Verified Successfully"
+      });
+    } catch (e: any) {
+      res.status(500).json({
+        ok: false,
+        error: e.message,
+        code: e.code,
+        command: e.command,
+        config: {
+          host: "smtp.gmail.com",
+          port: 587,
+          userSet: !!process.env.SMTP_USER,
+          passSet: !!process.env.SMTP_PASS
+        }
+      });
     }
   });
 
