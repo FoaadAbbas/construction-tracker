@@ -199,7 +199,7 @@ async function runPythonVolumeDiff(t1Path: string, t2Path: string, voxelSize: nu
   });
 }
 
-async function runPythonExtractPoints(filePath: string, maxPoints: number = 500000) {
+async function runPythonExtractPoints(filePath: string, maxPoints: number = 350000) {
   const py = process.env.PYTHON_BIN || "python3";
   const script = path.join(ROOT, "python", "volume_diff.py");
 
