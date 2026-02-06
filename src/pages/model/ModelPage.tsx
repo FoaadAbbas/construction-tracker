@@ -137,12 +137,11 @@ export function ModelPage() {
         const scaleFactor = 10 / maxDim;
         geometry.scale(scaleFactor, scaleFactor, scaleFactor);
 
-        // --- MATERIAL (Small dense points for realistic surface) ---
-        // Using very small points - they blend into a solid surface
+        // --- MATERIAL (Dense points for realistic surface with 500k points) ---
         const material = new THREE.PointsMaterial({
           color: colorArray ? undefined : 0x00ffff,
           vertexColors: !!colorArray,
-          size: 0.08,            // Small points that blend together
+          size: 0.04,            // Small points with 500k point count
           sizeAttenuation: true
         });
 
