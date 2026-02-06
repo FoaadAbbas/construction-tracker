@@ -56,36 +56,50 @@ export function ModelPage() {
         const headers: Record<string, string> = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const response = await fetch(`${API_BASE}/api/scans/${scanId}/points`, { headers });
-
-        // Get response text first to handle both JSON and non-JSON responses
-        const text = await response.text();
+        // Request binary format for faster transfer
+        const response = await fetch(`${API_BASE}/api/scans/${scanId}/points?format=binary`, { headers });
 
         if (!response.ok) {
-          // Try to parse error message from JSON, fall back to status text
+          // Try to parse error from JSON response
           try {
-            const errorData = JSON.parse(text);
+            const errorData = await response.json();
             throw new Error(errorData.error || `Failed: ${response.statusText}`);
           } catch {
             throw new Error(`Failed: ${response.statusText}`);
           }
         }
 
-        // Parse JSON
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          throw new Error("Invalid response from server - not valid JSON");
+        // Parse binary response
+        const buffer = await response.arrayBuffer();
+        const dataView = new DataView(buffer);
+
+        // Read header
+        const numPoints = dataView.getUint32(0, true); // little-endian
+        const hasColors = dataView.getUint8(4) === 1;
+
+        if (numPoints === 0) throw new Error("No points in file");
+
+        // Read positions
+        let offset = 5;
+        const points: number[][] = [];
+        for (let i = 0; i < numPoints; i++) {
+          const x = dataView.getFloat32(offset, true); offset += 4;
+          const y = dataView.getFloat32(offset, true); offset += 4;
+          const z = dataView.getFloat32(offset, true); offset += 4;
+          points.push([x, y, z]);
         }
 
-        // Check for error in response
-        if (data.error) {
-          throw new Error(data.error);
+        // Read colors if present
+        let colors: number[][] | undefined;
+        if (hasColors) {
+          colors = [];
+          for (let i = 0; i < numPoints; i++) {
+            const r = dataView.getFloat32(offset, true); offset += 4;
+            const g = dataView.getFloat32(offset, true); offset += 4;
+            const b = dataView.getFloat32(offset, true); offset += 4;
+            colors.push([r, g, b]);
+          }
         }
-
-        const points = data.points;
-        const colors = data.colors;
 
         if (!points || points.length === 0) throw new Error("No points in file");
 

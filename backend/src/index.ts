@@ -54,6 +54,52 @@ fs.mkdirSync(REPORTS_DIR, { recursive: true });
 
 import crypto from "crypto";
 
+// Point cloud cache for faster repeated loads
+// Key: scanId, Value: { points, colors, timestamp }
+interface CacheEntry {
+  points: number[][];
+  colors?: number[][];
+  timestamp: number;
+}
+const pointCloudCache = new Map<string, CacheEntry>();
+const CACHE_MAX_SIZE = 10;
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function cleanExpiredCache() {
+  const now = Date.now();
+  for (const [key, entry] of pointCloudCache) {
+    if (now - entry.timestamp > CACHE_TTL_MS) {
+      pointCloudCache.delete(key);
+    }
+  }
+}
+
+function addToCache(scanId: string, points: number[][], colors?: number[][]) {
+  cleanExpiredCache();
+  // If cache is full, remove oldest entry
+  if (pointCloudCache.size >= CACHE_MAX_SIZE) {
+    let oldestKey = "";
+    let oldestTime = Infinity;
+    for (const [key, entry] of pointCloudCache) {
+      if (entry.timestamp < oldestTime) {
+        oldestTime = entry.timestamp;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey) pointCloudCache.delete(oldestKey);
+  }
+  pointCloudCache.set(scanId, { points, colors, timestamp: Date.now() });
+}
+
+function getFromCache(scanId: string): CacheEntry | undefined {
+  const entry = pointCloudCache.get(scanId);
+  if (entry && Date.now() - entry.timestamp <= CACHE_TTL_MS) {
+    return entry;
+  }
+  if (entry) pointCloudCache.delete(scanId); // Expired
+  return undefined;
+}
+
 // JWT validation middleware
 function authenticateToken(req: express.Request, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers['authorization'];
@@ -153,7 +199,7 @@ async function runPythonVolumeDiff(t1Path: string, t2Path: string, voxelSize: nu
   });
 }
 
-async function runPythonExtractPoints(filePath: string, maxPoints: number = 400000) {
+async function runPythonExtractPoints(filePath: string, maxPoints: number = 500000) {
   const py = process.env.PYTHON_BIN || "python3";
   const script = path.join(ROOT, "python", "volume_diff.py");
 
@@ -617,12 +663,69 @@ async function main() {
 
   app.get("/api/scans/:id/points", authenticateToken, async (req, res) => {
     const id = String(req.params.id);
+    const format = String(req.query.format || "json"); // "json" or "binary"
     const scan = await ScanModel.findById(id).lean();
     if (!scan?.filePath) return res.status(404).json({ error: "Scan not found" });
 
     try {
-      const result = await runPythonExtractPoints(scan.filePath);
-      res.json(result);
+      // Check cache first
+      let cached = getFromCache(id);
+      let points: number[][];
+      let colors: number[][] | undefined;
+
+      if (cached) {
+        console.log(`Cache hit for scan ${id}`);
+        points = cached.points;
+        colors = cached.colors;
+      } else {
+        console.log(`Cache miss for scan ${id}, extracting...`);
+        const result = await runPythonExtractPoints(scan.filePath);
+        points = result.points;
+        colors = result.colors;
+        // Add to cache
+        addToCache(id, points, colors);
+      }
+
+      if (format === "binary") {
+        // Binary format: Float32Array buffer
+        // Format: [numPoints (4 bytes), hasColors (1 byte), ...positions (12 bytes each), ...colors (12 bytes each if present)]
+        const numPoints = points.length;
+        const hasColors = colors && colors.length === numPoints ? 1 : 0;
+        const headerSize = 5; // 4 bytes for numPoints + 1 byte for hasColors
+        const pointsSize = numPoints * 3 * 4; // 3 floats * 4 bytes each
+        const colorsSize = hasColors ? numPoints * 3 * 4 : 0;
+        const totalSize = headerSize + pointsSize + colorsSize;
+
+        const buffer = Buffer.alloc(totalSize);
+        let offset = 0;
+
+        // Write header
+        buffer.writeUInt32LE(numPoints, offset); offset += 4;
+        buffer.writeUInt8(hasColors, offset); offset += 1;
+
+        // Write positions
+        for (let i = 0; i < numPoints; i++) {
+          buffer.writeFloatLE(points[i][0], offset); offset += 4;
+          buffer.writeFloatLE(points[i][1], offset); offset += 4;
+          buffer.writeFloatLE(points[i][2], offset); offset += 4;
+        }
+
+        // Write colors if present
+        if (hasColors && colors) {
+          for (let i = 0; i < numPoints; i++) {
+            buffer.writeFloatLE(colors[i][0], offset); offset += 4;
+            buffer.writeFloatLE(colors[i][1], offset); offset += 4;
+            buffer.writeFloatLE(colors[i][2], offset); offset += 4;
+          }
+        }
+
+        res.setHeader("Content-Type", "application/octet-stream");
+        res.setHeader("Content-Length", totalSize);
+        res.send(buffer);
+      } else {
+        // JSON format (legacy)
+        res.json({ points, colors });
+      }
     } catch (error) {
       console.error("Error extracting points:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
