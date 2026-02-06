@@ -8,35 +8,13 @@ import multer from "multer";
 import { WebSocketServer } from "ws";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-// Create transporter using Gmail service for better compatibility
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // upgrade later with STARTTLS
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  connectionTimeout: 30000, // 30 seconds - fail fast instead of hanging
-  greetingTimeout: 20000,   // 20 seconds
-  socketTimeout: 30000,     // 30 seconds
-  tls: {
-    rejectUnauthorized: false // Helps with Windows certificate issues
-  }
-});
+// Initialize Resend client
+const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@resend.dev";
 
-// Verify transporter connection on startup
-transporter.verify(function (error, success) {
-  if (error) {
-    console.error("SMTP connection error:", error.message);
-  } else {
-    console.log("SMTP server is ready to send emails");
-  }
-});
-
-console.log("Transporter created with user:", process.env.SMTP_USER);
+console.log("Resend client initialized, FROM_EMAIL:", FROM_EMAIL);
 
 
 import { connectDb } from "./db.js";
@@ -332,64 +310,38 @@ async function main() {
   app.post("/api/test-email", async (req, res) => {
     try {
       const { to } = req.body;
-      await transporter.sendMail({
-        from: process.env.SMTP_USER,
-        to: to || process.env.SMTP_USER,
+      const { data, error } = await resend.emails.send({
+        from: FROM_EMAIL,
+        to: to || "test@example.com",
         subject: "Test Email",
         html: "<p>This is a test email from Construction Tracker.</p>",
       });
-      res.json({ message: "Test email sent" });
+      if (error) {
+        throw new Error(error.message);
+      }
+      res.json({ message: "Test email sent", id: data?.id });
     } catch (e: any) {
       console.error("Test email error:", e);
       res.status(500).json({ error: String(e?.message || e) });
     }
   });
 
-  app.get("/api/debug-smtp", async (req, res) => {
+  app.get("/api/debug-email", async (req, res) => {
     try {
-      const userSet = !!process.env.SMTP_USER;
-      const passSet = !!process.env.SMTP_PASS;
-
-      console.log("Debugging SMTP...");
-      console.log("Host:", "smtp.gmail.com");
-      console.log("Port:", 587);
-      console.log("User Set:", userSet);
-      console.log("Pass Set:", passSet);
-
-      await new Promise<void>((resolve, reject) => {
-        transporter.verify(function (error, success) {
-          if (error) {
-            console.error("Verification failed:", error);
-            reject(error);
-          } else {
-            console.log("Verification success");
-            resolve();
-          }
-        });
-      });
-
+      const apiKeySet = !!process.env.RESEND_API_KEY;
       res.json({
         ok: true,
         config: {
-          host: "smtp.gmail.com",
-          port: 587,
-          userSet,
-          passSet
+          provider: "Resend",
+          apiKeySet,
+          fromEmail: FROM_EMAIL
         },
-        message: "SMTP Connection Verified Successfully"
+        message: "Resend configuration loaded"
       });
     } catch (e: any) {
       res.status(500).json({
         ok: false,
-        error: e.message,
-        code: e.code,
-        command: e.command,
-        config: {
-          host: "smtp.gmail.com",
-          port: 587,
-          userSet: !!process.env.SMTP_USER,
-          passSet: !!process.env.SMTP_PASS
-        }
+        error: e.message
       });
     }
   });
@@ -421,14 +373,17 @@ async function main() {
       const resetUrl = `${process.env.CORS_ORIGIN}/reset-password?token=${resetToken}`;
       console.log("Reset URL:", resetUrl);
 
-      console.log("Sending email...");
-      await transporter.sendMail({
-        from: process.env.SMTP_USER,
+      console.log("Sending email via Resend...");
+      const { data, error } = await resend.emails.send({
+        from: FROM_EMAIL,
         to: email,
         subject: "Password Reset",
         html: `<p>You requested a password reset.</p><p>Click <a href="${resetUrl}">here</a> to reset your password.</p><p>This link expires in 1 hour.</p>`,
       });
-      console.log("Email sent successfully");
+      if (error) {
+        throw new Error(error.message);
+      }
+      console.log("Email sent successfully, id:", data?.id);
 
       res.json({ message: "If an account with that email exists, a reset link has been sent." });
     } catch (e: any) {
