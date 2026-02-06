@@ -141,7 +141,7 @@ export function ModelPage() {
         const material = new THREE.PointsMaterial({
           color: colorArray ? undefined : 0x00ffff,
           vertexColors: !!colorArray,
-          size: 0.06,            // Balanced for 200k points
+          size: 0.10,            // Larger points to fill gaps
           sizeAttenuation: true
         });
 
