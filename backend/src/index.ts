@@ -447,6 +447,51 @@ async function main() {
         addToCache(String(t2Scan._id), t2Data.points, t2Data.colors);
 
         console.log("Created demo zone, scans, and cached 3D data");
+      } else {
+        // Project exists - ensure historical runs exist for the graph (backfill if missing)
+        const runCount = await RunModel.countDocuments({ projectId: String(demoProject._id) });
+        if (runCount < 2) {
+          console.log("Backfilling demo runs...");
+          const scans = await ScanModel.find({ projectId: String(demoProject._id) }).sort({ uploadedAtISO: 1 });
+          const demoZone = await ZoneModel.findOne({ projectId: String(demoProject._id) });
+
+          if (scans.length >= 2 && demoZone) {
+            const t1Id = String(scans[0]._id);
+            const t2Id = String(scans[1]._id);
+            const zoneId = String(demoZone._id);
+
+            const runData = [
+              { daysAgo: 35, progress: 10, volumeT1: 50.0, volumeT2: 62.5 },
+              { daysAgo: 28, progress: 22, volumeT1: 62.5, volumeT2: 98.0 },
+              { daysAgo: 21, progress: 38, volumeT1: 98.0, volumeT2: 145.5 },
+              { daysAgo: 14, progress: 52, volumeT1: 145.5, volumeT2: 205.0 },
+              { daysAgo: 7, progress: 58, volumeT1: 205.0, volumeT2: 242.0 },
+              { daysAgo: 0, progress: 65, volumeT1: 242.0, volumeT2: 280.3 },
+            ];
+
+            for (const run of runData) {
+              const runDate = new Date(Date.now() - run.daysAgo * 24 * 60 * 60 * 1000).toISOString();
+              await RunModel.create({
+                projectId: String(demoProject._id),
+                createdAtISO: runDate,
+                t1ScanId: t1Id,
+                t2ScanId: t2Id,
+                status: "done",
+                alignmentConfidence: "high",
+                volumeT1M3: run.volumeT1,
+                volumeT2M3: run.volumeT2,
+                volumeChangeM3: run.volumeT2 - run.volumeT1,
+                overallProgressPct: run.progress,
+                metricsByZone: [{
+                  zoneId: zoneId,
+                  progressPct: run.progress,
+                  volumeChangeM3: run.volumeT2 - run.volumeT1,
+                }],
+              });
+            }
+            console.log("Backfilled demo runs");
+          }
+        }
       }
 
       // Generate token for demo user
@@ -1091,27 +1136,8 @@ async function main() {
   app.get("/api/dashboard", authenticateToken, async (req, res) => {
     const projectId = String(req.query.projectId || demoProjectId);
 
-    // Check if this is the demo project - return hardcoded sample data
-    const project = await ProjectModel.findById(projectId).lean();
-    if (project?.name === "Demo Construction Site") {
-      // Return hardcoded demo dashboard data
-      const now = Date.now();
-      const demoSeries = [
-        { t: new Date(now - 35 * 24 * 60 * 60 * 1000).toISOString(), progressPct: 10 },
-        { t: new Date(now - 28 * 24 * 60 * 60 * 1000).toISOString(), progressPct: 22 },
-        { t: new Date(now - 21 * 24 * 60 * 60 * 1000).toISOString(), progressPct: 38 },
-        { t: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), progressPct: 52 },
-        { t: new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString(), progressPct: 58 },
-        { t: new Date(now).toISOString(), progressPct: 65 },
-      ];
-      return res.json({
-        overallProgressPct: 65,
-        volumeChangeM3: 38.3,
-        forecastCompletionISO: new Date(now + 45 * 24 * 60 * 60 * 1000).toISOString(),
-        productivityIndex: 1.86,
-        series: demoSeries,
-      });
-    }
+    // Check if this is the demo project - calculate stats normally
+    // The graph data should come from the DB runs we seed in demo-login
 
     const latest = await RunModel.findOne({ projectId, status: "done" }).sort({ createdAtISO: -1 }).lean();
     const overallProgressPct = latest?.overallProgressPct ?? 0;
