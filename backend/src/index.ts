@@ -314,6 +314,8 @@ async function main() {
     try {
       const DEMO_EMAIL = "demo@constructiontracker.com";
       const DEMO_PASSWORD = "demo123456";
+      const now = new Date().toISOString();
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
       // Check if demo user exists, create if not
       let demoUser = await UserModel.findOne({ email: DEMO_EMAIL }).lean();
@@ -326,6 +328,7 @@ async function main() {
           username: "demo",
           name: "Demo User",
           passwordHash,
+          createdAtISO: now,
         });
         demoUser = newUser.toObject();
         console.log("Created demo user:", DEMO_EMAIL);
@@ -334,56 +337,71 @@ async function main() {
       // Check if demo project exists, create if not
       let demoProject = await ProjectModel.findOne({
         name: "Demo Construction Site",
-        owner: demoUser._id
+        userId: String(demoUser._id)
       }).lean();
 
       if (!demoProject) {
         // Create demo project
         const newProject = await ProjectModel.create({
           name: "Demo Construction Site",
-          location: "123 Demo Street, Sample City",
-          owner: demoUser._id,
+          userId: String(demoUser._id),
+          createdAtISO: now,
         });
         demoProject = newProject.toObject();
         console.log("Created demo project");
 
         // Create demo zone
         const demoZone = await ZoneModel.create({
-          projectId: demoProject._id,
+          projectId: String(demoProject._id),
           name: "Building Foundation",
-          planArea: 500,
+          type: "zone",
+          completionPct: 65,
+          createdAtISO: now,
+          linkedScanIds: [],
         });
 
         // Create T1 scan (initial scan)
         const t1Scan = await ScanModel.create({
-          zoneId: demoZone._id,
-          projectId: demoProject._id,
+          projectId: String(demoProject._id),
           name: "T1 - Initial Scan",
+          sizeBytes: 15000000,
+          capturedAtISO: weekAgo,
+          uploadedAtISO: weekAgo,
           filePath: "demo-t1.las",
-          status: "done",
-          uploadedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
         });
 
         // Create T2 scan (progress scan)
         const t2Scan = await ScanModel.create({
-          zoneId: demoZone._id,
-          projectId: demoProject._id,
+          projectId: String(demoProject._id),
           name: "T2 - Progress Scan",
+          sizeBytes: 25000000,
+          capturedAtISO: now,
+          uploadedAtISO: now,
           filePath: "demo-t2.las",
-          status: "done",
-          uploadedAt: new Date(),
+        });
+
+        // Update zone with linked scans
+        await ZoneModel.findByIdAndUpdate(demoZone._id, {
+          linkedScanIds: [String(t1Scan._id), String(t2Scan._id)]
         });
 
         // Create a comparison run
         await RunModel.create({
-          projectId: demoProject._id,
-          zoneId: demoZone._id,
-          scanT1Id: t1Scan._id,
-          scanT2Id: t2Scan._id,
+          projectId: String(demoProject._id),
+          createdAtISO: now,
+          t1ScanId: String(t1Scan._id),
+          t2ScanId: String(t2Scan._id),
           status: "done",
-          volumeT1: 125.5,
-          volumeT2: 280.3,
-          overallProgress: 65,
+          alignmentConfidence: "high",
+          volumeT1M3: 125.5,
+          volumeT2M3: 280.3,
+          volumeChangeM3: 154.8,
+          overallProgressPct: 65,
+          metricsByZone: [{
+            zoneId: String(demoZone._id),
+            progressPct: 65,
+            volumeChangeM3: 154.8,
+          }],
         });
 
         // Generate and cache synthetic 3D point cloud data for demo scans

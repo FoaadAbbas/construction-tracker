@@ -77,3 +77,75 @@
   border-color: var(--border);
   color: var(--text);
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  /* Reduce padding on mobile */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Stack cards vertically */
+  .grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Responsive tables - horizontal scroll */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  
+  /* Smaller text on mobile */
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  h2 {
+    font-size: 1.25rem;
+  }
+  
+  /* Full-width buttons on mobile */
+  button, .btn {
+    width: 100%;
+  }
+  
+  /* Responsive inputs */
+  input, select, textarea {
+    font-size: 16px; /* Prevent iOS zoom */
+  }
+  
+  /* Hide sidebar on mobile - handled by JS toggle */
+  .sidebar-desktop {
+    display: none;
+  }
+  
+  /* Show mobile menu button */
+  .mobile-menu-btn {
+    display: block;
+  }
+}
+
+/* Tablet responsive */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .grid-cols-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Ensure images and 3D canvas are responsive */
+canvas, img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Safe area insets for notched phones */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
