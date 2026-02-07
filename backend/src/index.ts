@@ -8,13 +8,15 @@ import multer from "multer";
 import { WebSocketServer } from "ws";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { Resend } from "resend";
+import * as brevo from "@getbrevo/brevo";
 
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@resend.dev";
+// Initialize Brevo client
+const brevoApiInstance = new brevo.TransactionalEmailsApi();
+brevoApiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || "");
+const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@example.com";
+const FROM_NAME = process.env.FROM_NAME || "Construction Tracker";
 
-console.log("Resend client initialized, FROM_EMAIL:", FROM_EMAIL);
+console.log("Brevo client initialized, FROM_EMAIL:", FROM_EMAIL);
 
 
 import { connectDb } from "./db.js";
@@ -310,33 +312,32 @@ async function main() {
   app.post("/api/test-email", async (req, res) => {
     try {
       const { to } = req.body;
-      const { data, error } = await resend.emails.send({
-        from: FROM_EMAIL,
-        to: to || "test@example.com",
-        subject: "Test Email",
-        html: "<p>This is a test email from Construction Tracker.</p>",
-      });
-      if (error) {
-        throw new Error(error.message);
-      }
-      res.json({ message: "Test email sent", id: data?.id });
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
+      sendSmtpEmail.subject = "Test Email";
+      sendSmtpEmail.htmlContent = "<p>This is a test email from Construction Tracker.</p>";
+      sendSmtpEmail.sender = { name: FROM_NAME, email: FROM_EMAIL };
+      sendSmtpEmail.to = [{ email: to || "test@example.com" }];
+
+      const result = await brevoApiInstance.sendTransacEmail(sendSmtpEmail);
+      res.json({ message: "Test email sent", id: result.body.messageId });
     } catch (e: any) {
       console.error("Test email error:", e);
-      res.status(500).json({ error: String(e?.message || e) });
+      res.status(500).json({ error: String(e?.message || e?.body?.message || e) });
     }
   });
 
   app.get("/api/debug-email", async (req, res) => {
     try {
-      const apiKeySet = !!process.env.RESEND_API_KEY;
+      const apiKeySet = !!process.env.BREVO_API_KEY;
       res.json({
         ok: true,
         config: {
-          provider: "Resend",
+          provider: "Brevo",
           apiKeySet,
-          fromEmail: FROM_EMAIL
+          fromEmail: FROM_EMAIL,
+          fromName: FROM_NAME
         },
-        message: "Resend configuration loaded"
+        message: "Brevo configuration loaded"
       });
     } catch (e: any) {
       res.status(500).json({
@@ -373,17 +374,15 @@ async function main() {
       const resetUrl = `${process.env.CORS_ORIGIN}/reset-password?token=${resetToken}`;
       console.log("Reset URL:", resetUrl);
 
-      console.log("Sending email via Resend...");
-      const { data, error } = await resend.emails.send({
-        from: FROM_EMAIL,
-        to: email,
-        subject: "Password Reset",
-        html: `<p>You requested a password reset.</p><p>Click <a href="${resetUrl}">here</a> to reset your password.</p><p>This link expires in 1 hour.</p>`,
-      });
-      if (error) {
-        throw new Error(error.message);
-      }
-      console.log("Email sent successfully, id:", data?.id);
+      console.log("Sending email via Brevo...");
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
+      sendSmtpEmail.subject = "Password Reset";
+      sendSmtpEmail.htmlContent = `<p>You requested a password reset.</p><p>Click <a href="${resetUrl}">here</a> to reset your password.</p><p>This link expires in 1 hour.</p>`;
+      sendSmtpEmail.sender = { name: FROM_NAME, email: FROM_EMAIL };
+      sendSmtpEmail.to = [{ email: email }];
+
+      const result = await brevoApiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log("Email sent successfully, id:", result.body.messageId);
 
       res.json({ message: "If an account with that email exists, a reset link has been sent." });
     } catch (e: any) {
