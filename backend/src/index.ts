@@ -309,6 +309,139 @@ async function main() {
     }
   });
 
+  // Demo login - creates demo user and sample project if not exists
+  app.post("/api/auth/demo-login", async (req, res) => {
+    try {
+      const DEMO_EMAIL = "demo@constructiontracker.com";
+      const DEMO_PASSWORD = "demo123456";
+
+      // Check if demo user exists, create if not
+      let demoUser = await UserModel.findOne({ email: DEMO_EMAIL }).lean();
+
+      if (!demoUser) {
+        // Create demo user
+        const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+        const newUser = await UserModel.create({
+          email: DEMO_EMAIL,
+          username: "demo",
+          name: "Demo User",
+          passwordHash,
+        });
+        demoUser = newUser.toObject();
+        console.log("Created demo user:", DEMO_EMAIL);
+      }
+
+      // Check if demo project exists, create if not
+      let demoProject = await ProjectModel.findOne({
+        name: "Demo Construction Site",
+        owner: demoUser._id
+      }).lean();
+
+      if (!demoProject) {
+        // Create demo project
+        const newProject = await ProjectModel.create({
+          name: "Demo Construction Site",
+          location: "123 Demo Street, Sample City",
+          owner: demoUser._id,
+        });
+        demoProject = newProject.toObject();
+        console.log("Created demo project");
+
+        // Create demo zone
+        const demoZone = await ZoneModel.create({
+          projectId: demoProject._id,
+          name: "Building Foundation",
+          planArea: 500,
+        });
+
+        // Create T1 scan (initial scan)
+        const t1Scan = await ScanModel.create({
+          zoneId: demoZone._id,
+          projectId: demoProject._id,
+          name: "T1 - Initial Scan",
+          filePath: "demo-t1.las",
+          status: "done",
+          uploadedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+        });
+
+        // Create T2 scan (progress scan)
+        const t2Scan = await ScanModel.create({
+          zoneId: demoZone._id,
+          projectId: demoProject._id,
+          name: "T2 - Progress Scan",
+          filePath: "demo-t2.las",
+          status: "done",
+          uploadedAt: new Date(),
+        });
+
+        // Create a comparison run
+        await RunModel.create({
+          projectId: demoProject._id,
+          zoneId: demoZone._id,
+          scanT1Id: t1Scan._id,
+          scanT2Id: t2Scan._id,
+          status: "done",
+          volumeT1: 125.5,
+          volumeT2: 280.3,
+          overallProgress: 65,
+        });
+
+        // Generate and cache synthetic 3D point cloud data for demo scans
+        const generateDemoPoints = (numPoints: number, offset: number) => {
+          const points: number[][] = [];
+          const colors: number[][] = [];
+
+          // Generate a simple building shape (box with some variation)
+          for (let i = 0; i < numPoints; i++) {
+            // Random position within a building-like shape
+            const x = (Math.random() - 0.5) * 20 + offset;
+            const y = (Math.random() - 0.5) * 15;
+            const z = Math.random() * (8 + offset * 0.5); // Height varies with scan
+
+            points.push([x, y, z]);
+
+            // Brown/concrete color with variation
+            const r = 0.6 + Math.random() * 0.2;
+            const g = 0.4 + Math.random() * 0.2;
+            const b = 0.3 + Math.random() * 0.1;
+            colors.push([r, g, b]);
+          }
+          return { points, colors };
+        };
+
+        // Cache demo point clouds
+        const t1Data = generateDemoPoints(50000, 0);
+        addToCache(String(t1Scan._id), t1Data.points, t1Data.colors);
+
+        const t2Data = generateDemoPoints(80000, 2); // T2 has more points and is taller
+        addToCache(String(t2Scan._id), t2Data.points, t2Data.colors);
+
+        console.log("Created demo zone, scans, and cached 3D data");
+      }
+
+      // Generate token for demo user
+      const token = jwt.sign(
+        { userId: demoUser._id, email: demoUser.email },
+        process.env.JWT_SECRET || "secret",
+        { expiresIn: "7d" }
+      );
+
+      res.json({
+        token,
+        user: {
+          id: String(demoUser._id),
+          name: demoUser.name,
+          email: demoUser.email,
+          username: demoUser.username,
+        },
+        isDemo: true,
+      });
+    } catch (e: any) {
+      console.error("Demo login error:", e);
+      res.status(500).json({ error: String(e?.message || e) });
+    }
+  });
+
   app.post("/api/test-email", async (req, res) => {
     try {
       const { to } = req.body;

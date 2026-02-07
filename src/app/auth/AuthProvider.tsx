@@ -15,6 +15,7 @@ type AuthContextValue = {
   login: (emailOrUsername: string, password: string) => Promise<void>;
   register: (name: string, email: string, username: string, password: string) => Promise<void>;
   logout: () => void;
+  setAuth: (data: { token: string; user: AuthUser }) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -95,6 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         localStorage.removeItem(LS_KEY_TOKEN);
         localStorage.removeItem(LS_KEY_USER);
+      },
+      setAuth: (data: { token: string; user: AuthUser }) => {
+        localStorage.setItem(LS_KEY_TOKEN, data.token);
+        localStorage.setItem(LS_KEY_USER, JSON.stringify(data.user));
+        setUser(data.user);
       },
     }),
     [user]
