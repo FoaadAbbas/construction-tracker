@@ -385,24 +385,36 @@ async function main() {
           linkedScanIds: [String(t1Scan._id), String(t2Scan._id)]
         });
 
-        // Create a comparison run
-        await RunModel.create({
-          projectId: String(demoProject._id),
-          createdAtISO: now,
-          t1ScanId: String(t1Scan._id),
-          t2ScanId: String(t2Scan._id),
-          status: "done",
-          alignmentConfidence: "high",
-          volumeT1M3: 125.5,
-          volumeT2M3: 280.3,
-          volumeChangeM3: 154.8,
-          overallProgressPct: 65,
-          metricsByZone: [{
-            zoneId: String(demoZone._id),
-            progressPct: 65,
-            volumeChangeM3: 154.8,
-          }],
-        });
+        // Create multiple comparison runs for progress trend chart
+        const runData = [
+          { daysAgo: 35, progress: 10, volumeT1: 50.0, volumeT2: 62.5 },
+          { daysAgo: 28, progress: 22, volumeT1: 62.5, volumeT2: 98.0 },
+          { daysAgo: 21, progress: 38, volumeT1: 98.0, volumeT2: 145.5 },
+          { daysAgo: 14, progress: 52, volumeT1: 145.5, volumeT2: 205.0 },
+          { daysAgo: 7, progress: 58, volumeT1: 205.0, volumeT2: 242.0 },
+          { daysAgo: 0, progress: 65, volumeT1: 242.0, volumeT2: 280.3 },
+        ];
+
+        for (const run of runData) {
+          const runDate = new Date(Date.now() - run.daysAgo * 24 * 60 * 60 * 1000).toISOString();
+          await RunModel.create({
+            projectId: String(demoProject._id),
+            createdAtISO: runDate,
+            t1ScanId: String(t1Scan._id),
+            t2ScanId: String(t2Scan._id),
+            status: "done",
+            alignmentConfidence: "high",
+            volumeT1M3: run.volumeT1,
+            volumeT2M3: run.volumeT2,
+            volumeChangeM3: run.volumeT2 - run.volumeT1,
+            overallProgressPct: run.progress,
+            metricsByZone: [{
+              zoneId: String(demoZone._id),
+              progressPct: run.progress,
+              volumeChangeM3: run.volumeT2 - run.volumeT1,
+            }],
+          });
+        }
 
         // Generate and cache synthetic 3D point cloud data for demo scans
         const generateDemoPoints = (numPoints: number, offset: number) => {
