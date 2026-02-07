@@ -472,6 +472,135 @@ async function main() {
     }
   });
 
+  // Reset demo data - deletes existing demo project and recreates with fresh data
+  app.post("/api/auth/reset-demo", async (req, res) => {
+    try {
+      const DEMO_EMAIL = "demo@constructiontracker.com";
+
+      const demoUser = await UserModel.findOne({ email: DEMO_EMAIL }).lean();
+      if (!demoUser) {
+        return res.status(404).json({ error: "Demo user not found. Use demo-login first." });
+      }
+
+      // Find and delete existing demo project and all related data
+      const demoProject = await ProjectModel.findOne({
+        name: "Demo Construction Site",
+        userId: String(demoUser._id)
+      }).lean();
+
+      if (demoProject) {
+        const projectId = String(demoProject._id);
+        // Delete all related data
+        await RunModel.deleteMany({ projectId });
+        await ScanModel.deleteMany({ projectId });
+        await ZoneModel.deleteMany({ projectId });
+        await ReportModel.deleteMany({ projectId });
+        await ProjectModel.deleteOne({ _id: demoProject._id });
+        console.log("Deleted existing demo project and related data");
+      }
+
+      // Now create fresh demo data
+      const now = new Date().toISOString();
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const newProject = await ProjectModel.create({
+        name: "Demo Construction Site",
+        userId: String(demoUser._id),
+        createdAtISO: now,
+      });
+
+      const demoZone = await ZoneModel.create({
+        projectId: String(newProject._id),
+        name: "Building Foundation",
+        type: "zone",
+        completionPct: 65,
+        createdAtISO: now,
+        linkedScanIds: [],
+      });
+
+      const t1Scan = await ScanModel.create({
+        projectId: String(newProject._id),
+        name: "T1 - Initial Scan",
+        sizeBytes: 15000000,
+        capturedAtISO: weekAgo,
+        uploadedAtISO: weekAgo,
+        filePath: "demo-t1.las",
+      });
+
+      const t2Scan = await ScanModel.create({
+        projectId: String(newProject._id),
+        name: "T2 - Progress Scan",
+        sizeBytes: 25000000,
+        capturedAtISO: now,
+        uploadedAtISO: now,
+        filePath: "demo-t2.las",
+      });
+
+      await ZoneModel.findByIdAndUpdate(demoZone._id, {
+        linkedScanIds: [String(t1Scan._id), String(t2Scan._id)]
+      });
+
+      // Create multiple runs for progress trend
+      const runData = [
+        { daysAgo: 35, progress: 10, volumeT1: 50.0, volumeT2: 62.5 },
+        { daysAgo: 28, progress: 22, volumeT1: 62.5, volumeT2: 98.0 },
+        { daysAgo: 21, progress: 38, volumeT1: 98.0, volumeT2: 145.5 },
+        { daysAgo: 14, progress: 52, volumeT1: 145.5, volumeT2: 205.0 },
+        { daysAgo: 7, progress: 58, volumeT1: 205.0, volumeT2: 242.0 },
+        { daysAgo: 0, progress: 65, volumeT1: 242.0, volumeT2: 280.3 },
+      ];
+
+      for (const run of runData) {
+        const runDate = new Date(Date.now() - run.daysAgo * 24 * 60 * 60 * 1000).toISOString();
+        await RunModel.create({
+          projectId: String(newProject._id),
+          createdAtISO: runDate,
+          t1ScanId: String(t1Scan._id),
+          t2ScanId: String(t2Scan._id),
+          status: "done",
+          alignmentConfidence: "high",
+          volumeT1M3: run.volumeT1,
+          volumeT2M3: run.volumeT2,
+          volumeChangeM3: run.volumeT2 - run.volumeT1,
+          overallProgressPct: run.progress,
+          metricsByZone: [{
+            zoneId: String(demoZone._id),
+            progressPct: run.progress,
+            volumeChangeM3: run.volumeT2 - run.volumeT1,
+          }],
+        });
+      }
+
+      // Generate and cache synthetic 3D point cloud data
+      const generateDemoPoints = (numPoints: number, offset: number) => {
+        const points: number[][] = [];
+        const colors: number[][] = [];
+        for (let i = 0; i < numPoints; i++) {
+          const x = (Math.random() - 0.5) * 20 + offset;
+          const y = (Math.random() - 0.5) * 15;
+          const z = Math.random() * (8 + offset * 0.5);
+          points.push([x, y, z]);
+          const r = 0.6 + Math.random() * 0.2;
+          const g = 0.4 + Math.random() * 0.2;
+          const b = 0.3 + Math.random() * 0.1;
+          colors.push([r, g, b]);
+        }
+        return { points, colors };
+      };
+
+      const t1Data = generateDemoPoints(50000, 0);
+      addToCache(String(t1Scan._id), t1Data.points, t1Data.colors);
+      const t2Data = generateDemoPoints(80000, 2);
+      addToCache(String(t2Scan._id), t2Data.points, t2Data.colors);
+
+      console.log("Created fresh demo data with 6 runs for progress trend");
+      res.json({ success: true, message: "Demo data reset successfully" });
+    } catch (e: any) {
+      console.error("Reset demo error:", e);
+      res.status(500).json({ error: String(e?.message || e) });
+    }
+  });
+
   app.post("/api/test-email", async (req, res) => {
     try {
       const { to } = req.body;
