@@ -1090,6 +1090,29 @@ async function main() {
   // Dashboard
   app.get("/api/dashboard", authenticateToken, async (req, res) => {
     const projectId = String(req.query.projectId || demoProjectId);
+
+    // Check if this is the demo project - return hardcoded sample data
+    const project = await ProjectModel.findById(projectId).lean();
+    if (project?.name === "Demo Construction Site") {
+      // Return hardcoded demo dashboard data
+      const now = Date.now();
+      const demoSeries = [
+        { t: new Date(now - 35 * 24 * 60 * 60 * 1000).toISOString(), progressPct: 10 },
+        { t: new Date(now - 28 * 24 * 60 * 60 * 1000).toISOString(), progressPct: 22 },
+        { t: new Date(now - 21 * 24 * 60 * 60 * 1000).toISOString(), progressPct: 38 },
+        { t: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), progressPct: 52 },
+        { t: new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString(), progressPct: 58 },
+        { t: new Date(now).toISOString(), progressPct: 65 },
+      ];
+      return res.json({
+        overallProgressPct: 65,
+        volumeChangeM3: 38.3,
+        forecastCompletionISO: new Date(now + 45 * 24 * 60 * 60 * 1000).toISOString(),
+        productivityIndex: 1.86,
+        series: demoSeries,
+      });
+    }
+
     const latest = await RunModel.findOne({ projectId, status: "done" }).sort({ createdAtISO: -1 }).lean();
     const overallProgressPct = latest?.overallProgressPct ?? 0;
     const volumeChangeM3 = latest?.volumeChangeM3 ?? 0;
@@ -1216,6 +1239,19 @@ You help users understand construction progress, analyze scan data, provide insi
 
   app.get("/api/recommendations", authenticateToken, async (req, res) => {
     const projectId = String(req.query.projectId || demoProjectId);
+
+    // Check if this is the demo project - return hardcoded recommendations
+    const project = await ProjectModel.findById(projectId).lean();
+    if (project?.name === "Demo Construction Site") {
+      return res.json({
+        recommendations: [
+          "⚠️ Excavation pace is 15% behind schedule in Zone B. Consider adding a second backhoe team.",
+          "✅ Foundation pouring in Zone A is ahead of schedule. maintain current workflow.",
+          "ℹ️ Weather forecast shows rain next week. Ensure site drainage is clear to prevent delays."
+        ]
+      });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     const latest = await RunModel.findOne({ projectId, status: "done" }).sort({ createdAtISO: -1 }).lean();
     if (!latest) return res.json({ recommendations: ["Run a comparison to generate recommendations."] });
