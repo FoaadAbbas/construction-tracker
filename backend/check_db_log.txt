@@ -1,9 +1,0 @@
-Starting DB check...
-Connecting to DB...
-Original URI: mongodb+srv://FoaadDB:12052003A112@consturction.m0ls9x4.mongodb.net/construction_tracker?retryWrites=true&w=majority
-Trying corrected URI: mongodb+srv://FoaadDB:12052003A112@construction.m0ls9x4.mongodb.net/construction_tracker?retryWrites=true&w=majority
-Failed with corrected URI (construction): querySrv ECONNREFUSED _mongodb._tcp.construction.m0ls9x4.mongodb.net
-Trying tracker URI: mongodb+srv://FoaadDB:12052003A112@construction-tracker.m0ls9x4.mongodb.net/construction_tracker?retryWrites=true&w=majority
-Failed with tracker URI: querySrv ECONNREFUSED _mongodb._tcp.construction-tracker.m0ls9x4.mongodb.net
-Trying original...
-Failed with original URI too: querySrv ECONNREFUSED _mongodb._tcp.consturction.m0ls9x4.mongodb.net
