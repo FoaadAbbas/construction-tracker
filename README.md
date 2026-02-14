@@ -1,130 +1,122 @@
-# Construction Tracker (Vite + React + TypeScript + Node + Python)
+🏗️ Construction Tracker
+3D Point-Cloud Volume Change Monitoring System
+Visit Website: https://construction-tracker-teal.vercel.app/ Username: GeneralU Password: 123456
 
-This repo now contains:
+📌 Overview
+Construction Tracker is a full-stack web application designed to monitor construction site progress using 3D point-cloud scans.
 
-1) **Frontend**: Vite + React + TypeScript
-2) **Backend**: Node.js + TypeScript (Express) + **MongoDB** (Mongoose)
-3) **Computation**: Python (Open3D) for scan volume estimation / change detection
-4) **Reporting**: Real PDF + XLSX generation (PDFKit + ExcelJS)
+The system compares two scans:
 
-## Run locally (dev)
+T1 – Baseline scan
+T2 – Comparison scan
+It calculates volumetric changes using a voxel-based algorithm and visualizes the results in an interactive 3D viewer directly in the browser.
 
-### 1) Start MongoDB
+This project demonstrates advanced backend engineering, Python integration, real-time communication, and cloud deployment.
 
-- Local MongoDB: `mongodb://127.0.0.1:27017/construction_tracker`
-- Or MongoDB Atlas free tier: set `MONGODB_URI` in `backend/.env`
+🚀 Key Features
+Upload LAZ / E57 point-cloud scans
+Automatic voxel-based volume estimation
+Volume change calculation (m³)
+Interactive 3D visualization (orbit, zoom, pan)
+Real-time processing updates via WebSockets
+Cloud storage using MongoDB Atlas
+🏗️ System Architecture
+Frontend (React + TypeScript + Vite) ↓ Node.js Backend (Express) ↓ Python Volume Engine (Open3D) ↓ MongoDB Atlas
 
-### 2) Backend
+🛠️ Tech Stack
+Frontend
+React
+TypeScript
+Vite
+Tailwind CSS
+Three.js
+Backend
+Node.js
+Express
+WebSockets
+Multer
+Mongoose
+Python Engine
+Open3D
+laspy
+pye57
+NumPy
+Database
+MongoDB Atlas
+Deployment
+Frontend: Vercel
+Backend: Render
+⚙️ How It Works
+User uploads two point-cloud scans (T1 and T2).
 
-```bash
-cd backend
-npm i
+Backend temporarily stores the files.
+
+Node.js spawns a Python subprocess:
+
+python volume_engine.py --t1 scan1.laz --t2 scan2.laz --voxel 0.05
+
+Python:
+
+Loads the scans
+Converts them into voxel grids
+Calculates individual volumes
+Computes volume difference
+Returns JSON output
+Backend sends results to frontend.
+
+Data is saved to MongoDB.
+
+The 3D viewer renders both scans.
+
+🧠 Volume Estimation Formula
+Volume = (# of occupied voxels) × (voxel_size³)
+
+This provides a fast and scalable approximation of volumetric changes between scans.
+
+🔐 Environment Variables
+Backend (.env)
+MONGO_URI=your_mongodb_connection_string
+PORT=5000
+PYTHON_PATH=python
+
+Frontend (.env)
+VITE_API_URL=http://localhost:5000
+
+🚀 Run Locally
+Clone the Repository
+git clone
+cd construction-tracker
+
+Install Frontend
+npm install
 npm run dev
-```
 
-#### Backend env (Atlas / Gemini / deployment)
+Install Backend
+cd backend npm install
 
-- Create a `backend/.env` locally (do not commit it) and set:
-  - `MONGODB_URI` (MongoDB Atlas recommended)
-  - `GEMINI_API_KEY` (optional; enables chatbot + recommendations)
-  - `PYTHON_BIN` (optional; Windows often `python`)
+Install Python Dependencies
+cd backend/python pip install open3d laspy pye57 numpy
 
-See `backend/ENV.md` for details.
-
-### 3) Python dependencies (volume diff)
-
-```bash
-cd backend/python
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
-pip install -r requirements.txt
-```
-
-> Notes:
-> - **E57** files require optional dependency `pye57`.
-> - Large scans are down-sampled in Python for runtime stability.
-
-### 4) Frontend
-
-```bash
-npm i
+Start Backend
 npm run dev
-```
 
-The frontend proxies `/api` and `/downloads` to the backend (`http://localhost:4000`).
+📊 Use Cases
+Construction progress monitoring
+Earthwork volume estimation
+Excavation tracking
+Digital twin validation
+Civil engineering analysis
+🎓 Academic & Engineering Value
+This project showcases:
 
----
+Full-stack system design
+Backend–Python integration
+3D spatial data processing
+Real-time architecture
+Cloud database integration
+Production deployment
+👨‍💻 Authors
+Michael Billan & Foad Abbas Software Engineering Students Backend & Systems-Oriented Engineers
 
-# React + TypeScript + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+License
+All rights reserved © Braude College of Engineering, Software Engineering Department, Michael Billan.
